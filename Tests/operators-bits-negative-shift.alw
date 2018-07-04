@@ -1,0 +1,6 @@
+write(#FFFF shr -1).
+----stderr
+Tests/operators-bits-negative-shift.alw:1:13: negative shift operand to SHR
+----exitcode
+1
+----end

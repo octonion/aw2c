@@ -1,0 +1,8 @@
+begin
+   write("1");
+@aw2c_text
+   write("2");
+end.
+----compiler
+Tests/long-comment-error-1.alw:3:1: This @AW2C_TEXT directive is not closed with an @AW2C_CODE directive
+----end

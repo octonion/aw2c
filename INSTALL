@@ -1,0 +1,32 @@
+INSTALL -- Instructions for compiling and installing AW2C
+
+Makefile targets, and their prerequisite programs:
+
+"make" 
+   
+   builds and tests AW2C. All sorts of stuff will scroll past. When
+   you see "ALL TESTS PASSED" you will have an Algol W compiler.
+
+   Requires Ocaml, Python, GCC and the Boehm GC library
+   (apt-get install gcc libgc-dev ocaml-nox python python-docutils)
+
+"make install" 
+
+   Installs AW2C. The default destination is the "/usr/local'
+   directories. Edit Makefile if you do not want this.
+
+   Requires install, sed (basic Unix tools)
+
+   I recommend reading "man aw2c" and "/usr/local/share/doc/aw2c.html"
+   at this point. "man aw2c" explains how to run the thing, "aw2c.html"
+   the fine points of AW2C's Algol W implementation.
+
+"make dist"
+
+   Creates a distribution tar file. This only works from a directory
+   under the wing of the Darcs version control system.
+
+   Requires darcs, gzip
+   (apt-get install darcs)
+
+Glyn Webster, 2009

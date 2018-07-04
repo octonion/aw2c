@@ -1,0 +1,3 @@
+#!/bin/sh
+# algolw -- script to compile a single Algol W program
+aw2c $1 -o $2.c && gcc $2.c -lm -lgc -lalw -o $2

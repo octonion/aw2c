@@ -1,0 +1,29 @@
+{yo();}
+yo();
+
+{while(!woah()) { yo(); }}
+while(!woah()) { yo(); }
+
+{ while(!woah()) { yo(); }
+^This C block is not closed with a '}'
+
+{ { while(!woah()) { yo(); } }
+^This C block is not closed with a '}'
+
+{/* Greet Americans */ while(!woah()) { yo(); }}
+/* Greet Americans */ while(!woah()) { yo(); }
+
+{ /* Greet Americans while(!woah()) { yo(); } }
+^There is a C comment without a closing '*/' in here
+
+{ Greet Americans */ while(!woah()) { yo(); } }
+^There is a C comment without an opening '/*' in here
+
+{ /* /* Greet Americans */ while(!woah()) { yo(); } }
+^There is a nested C comment in here
+
+{while(!woah()) { say("yo"); }}
+while(!woah()) { say("yo"); }
+
+{ while(!woah()) { say("yo); } }
+^There is a C string without a closing '"' in here

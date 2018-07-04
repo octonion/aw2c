@@ -1,0 +1,6 @@
+begin
+   integer i;
+   i := 4;
+   i := (integer){i * 2};
+   assert i = 8;
+end.

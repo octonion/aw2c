@@ -1,0 +1,61 @@
+*{
+#include <stdio.h>
+#include "alwio.h"
+
+FILE *channel3;
+alw_Scanner channel3_scanner;
+
+void initio (void)
+{
+    channel3 = fopen("Tests/inline-c-input-redirection.alw", "r");
+    alw_Scanner_initialize(&channel3_scanner, channel3, "Tests/inline-c-input-redirection.alw");
+}
+
+void get (int channel)
+{
+    if (channel == 3)
+        alw_active_scanner = &channel3_scanner;
+    else
+        alw_active_scanner = &alw_stdin_scanner;
+}
+};
+
+begin
+    procedure initio; c "";
+    procedure get (integer value channel); c "";
+
+    integer i;
+    string(20) s;
+
+    initio;
+
+    readon(s); write(s);
+    readon(s); write(s);
+    readon(s); write(s);
+
+    get(3);
+    readcard(s); write(s);
+    readcard(s); write(s);
+    readcard(s); write(s);
+    get(7);
+
+    readon(s); write(s);
+    readon(s); write(s);
+    readon(s); write(s);
+end.
+
+----stdin
+"stdin 1" "stdin 2" 
+"stdin 3" "stdin 4" 
+"stdin 5" "stdin 6" 
+----stdout
+stdin 1
+stdin 2
+stdin 3
+*{
+#include <stdio.h>
+#include "alwio.h"
+stdin 4
+stdin 5
+stdin 6
+----end

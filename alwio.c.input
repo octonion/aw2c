@@ -1,0 +1,905 @@
+/* alwio.c.input -- primitives for the Algol W "Input/Output System"  -*-C-*-
+
+This file is an input file for 'scanner_state_machine.py', which will
+output 'alwio.c'. The symbol 'STATES' (in double angle brackets) will
+be expanded into a state machine that can read data in the Algol W
+READ syntax.
+
+
+This file is part of aw2c. Copyright 2008 Glyn Webster.
+
+This file is free software: you can redistribute it and/or modify it
+under the terms of the GNU Limited General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+aw2c is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Limited General Public
+License along with aw2c.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
+
+#include "alw.h"
+#include "alwio.h"
+
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <limits.h>
+#include <complex.h>
+#include <fenv.h>
+
+
+#ifdef ALW_NO_LIBGC
+#include <malloc.h>
+#define GC_MALLOC_ATOMIC malloc
+#define GC_RELLOC realloc
+#else
+#include <gc/gc.h>
+#endif
+
+
+/* Allocates a garbage-collectable copy of a C string. */
+static
+const char *
+stralloc (const char *cstring)
+{
+    char *s;
+    int length = strlen(cstring);
+    s = GC_MALLOC_ATOMIC(length + 1);
+    assert(s); 
+    strcpy(s, cstring);
+    return (const char *)s;
+}
+
+
+/* Returns how long an Algol W string is, if you ignore the trailing spaces. */
+static
+int
+printable_length (alw_str string, int length)
+{
+    int i;
+    for (i = length; i > 0; --i)
+        if (string[i - 1] != ' ')
+            break;
+    return i;
+}
+
+
+/* READING  -------------------------------------------------------------------------------- */
+
+
+alw_Scanner alw_stdin_scanner;
+alw_Scanner *alw_active_scanner;
+
+
+typedef enum {Integer, Real, Imaginary, Complex, Bits, Logical, String, Error, Eof} Scanner_result;
+
+
+void 
+alw_Scanner_initialize (alw_Scanner *scanner, FILE *file, const char *name)
+{
+  scanner->input = file;
+  scanner->input_name = stralloc(name);
+  scanner->eof = false;
+  scanner->state = 0;
+  scanner->line = 1;
+  scanner->column = 0;
+  scanner->buflen = 0;
+}
+
+
+static
+void 
+Scanner_start (alw_Scanner *scanner)
+{
+  scanner->start_line = scanner->line;
+  scanner->buflen = 0;
+}
+
+
+static
+int
+Scanner_error (alw_Scanner *scanner, alw_loc loc, const char *message)
+{
+  alw_error( loc, "%s on line %d of %s.\n", message, scanner->start_line, scanner->input_name);
+}
+
+
+static
+const char *
+Scanner_result_string (Scanner_result result)
+{
+  switch (result) {
+  case Integer:   return "an integer"; break;
+  case Real:      return "a real"; break;
+  case Imaginary: return "an imaginary"; break;
+  case Complex:   return "a complex"; break;
+  case Bits:      return "bits"; break;
+  case Logical:   return "a logical"; break;
+  case String:    return "a string"; break;
+  case Error:     return "a syntax error"; break;
+  case Eof:       return "the end of the input"; break;
+  }
+}
+
+
+static
+int
+Scanner_fgetc (alw_Scanner *scanner)
+{
+  int c;
+  c = fgetc(scanner->input);
+  switch (c) {
+  case EOF:  ++scanner->line; scanner->column = 0; scanner->eof = true; break;
+  case '\n': ++scanner->line; scanner->column = 0; break;
+  default:   ++scanner->column; break;
+  }
+  /* printf("%c %3d (%2d, %2d) %d\n", c, c, scanner->line,
+     scanner->column, scanner->eof); */
+  return c;
+}
+
+
+static
+void 
+Scanner_new_card (alw_Scanner *scanner, alw_loc loc)
+{
+  if (scanner->eof) return;
+  while (scanner->column >= 1) {
+    (void)Scanner_fgetc(scanner);
+    if (scanner->eof) return;
+  }
+}
+
+
+static
+void 
+Scanner_addchar(alw_Scanner *scanner, char c)
+{
+  assert(scanner->buflen < Scanner_BUFSIZE - 1);
+  scanner->buffer[scanner->buflen++] = c;
+}
+
+
+static
+void 
+Scanner_close_buffer(alw_Scanner *scanner)
+{
+  assert(scanner->buflen < Scanner_BUFSIZE - 1);
+  scanner->buffer[scanner->buflen] = '\0';
+}
+
+
+static
+void 
+Scanner_addstring (alw_Scanner *scanner, char *s)
+{
+  char *p;
+  for (p = s; *p; ++p)
+    Scanner_addchar(scanner, *p);
+}
+
+
+static
+Scanner_result
+Scanner_scan (alw_Scanner *scanner)
+{
+  char c;
+
+  while (true) {
+    c = Scanner_fgetc(scanner);
+    /* printf("[%d %c]", scanner->state, c); */
+    switch (scanner->state) {
+      <<STATES>>    /* See scanner_state_machine.py */
+    }
+  }
+}
+
+
+
+static
+void
+Scanner_type_error (alw_Scanner *scanner, alw_loc loc, Scanner_result expected, Scanner_result found)
+{
+    alw_error( loc, "Expected to read %s on line %d of %s; found %s.\n",
+                 Scanner_result_string(expected), 
+                 scanner->line, scanner->input_name, 
+                 Scanner_result_string(found) );
+}
+
+
+static
+int
+Scanner_exception (alw_Scanner *scanner, alw_loc loc, Scanner_result expected, Scanner_result result)
+{
+  if (result == Eof)
+    alw_process_exception(loc, endfile);
+  else
+    Scanner_type_error (scanner, loc, expected, result);
+}
+
+
+static
+int
+Scanner_scan_for (alw_Scanner *scanner, alw_loc loc, Scanner_result expected)
+{
+  Scanner_result result;
+
+  result = Scanner_scan(scanner);
+  if (result == expected)
+    return 1;
+  else {
+    Scanner_exception(scanner, loc, expected, result);
+    return 0;  /* An exceptional condition was processed, the caller must supply a default value. */
+  }
+}
+
+
+void
+alw_readcard (alw_loc loc, alw_str recipient, int length)
+{
+    int c;
+    int i;
+    
+    alw_str_cpy(recipient, length, " ", 1); /* empty string */
+    Scanner_new_card(alw_active_scanner, loc);
+    for (i = 0; i < length; ++i) {
+        c = Scanner_fgetc(alw_active_scanner);
+        if (c == '\n') 
+            break;
+        else if (c == EOF) {
+            alw_process_exception(loc, endfile);
+            break;
+        }
+        else
+            recipient[i] = c;
+    }
+    Scanner_new_card(alw_active_scanner, loc);
+}
+
+
+void
+alw_readcard_char (alw_loc loc, alw_chr *recipient)
+{
+    int c;
+
+    Scanner_new_card(alw_active_scanner, loc);
+    c = Scanner_fgetc(alw_active_scanner);
+    if (c == '\n') 
+        *recipient =  ' ';
+    else if (c == EOF) {
+        alw_process_exception(loc, endfile);
+        *recipient = ' ';
+    }
+    else
+        *recipient = c;
+    Scanner_new_card(alw_active_scanner, loc);
+}
+
+
+void
+alw_read_integer (alw_loc loc, int *recipient)
+{
+  int i;
+  char *tailptr;
+
+  if (!Scanner_scan_for(alw_active_scanner, loc, Integer)) {
+    *recipient = 0;
+    return;
+  };
+  i = strtol((char *)alw_active_scanner->buffer, &tailptr, 10);
+  if (tailptr == (char *)alw_active_scanner->buffer && alw_active_scanner->buffer[0] == '-')
+    Scanner_error(alw_active_scanner, loc, "Integer too low");
+  else if (tailptr == (char *)alw_active_scanner->buffer)
+    Scanner_error(alw_active_scanner, loc, "Integer too high");
+  else
+    *recipient = i;
+}
+
+
+void
+alw_read_bits (alw_loc loc, unsigned int *recipient)
+{
+  unsigned int i;
+  char *tailptr;
+
+  if (!Scanner_scan_for(alw_active_scanner, loc, Bits)) {
+    *recipient = 0;
+    return;
+  };
+  i = strtoul((char *)alw_active_scanner->buffer, &tailptr, 16);
+  if (tailptr == (char *)alw_active_scanner->buffer)
+    Scanner_error(alw_active_scanner, loc, "Bits constant too high");
+  else
+    *recipient = i;
+}
+
+
+void
+alw_read_string (alw_loc loc, alw_str recipient, int length)
+{
+  if (!Scanner_scan_for(alw_active_scanner, loc, String)) {
+      alw_str_cpy(recipient, length, " ", 1); /* empty string */
+    return;
+  };
+  if (alw_active_scanner->buflen > length)
+    Scanner_error(alw_active_scanner, loc, "String too long");
+  else
+    alw_str_cpy(recipient, length, alw_active_scanner->buffer, alw_active_scanner->buflen);
+}
+
+
+void
+alw_read_char (alw_loc loc, alw_chr *recipient)
+{
+  if (!Scanner_scan_for(alw_active_scanner, loc, String)) {
+      *recipient = ' ';
+      return;
+  };
+  if (alw_active_scanner->buflen > 1)
+      Scanner_error(alw_active_scanner, loc, "String too long");
+  else if (alw_active_scanner->buflen == 0)
+      *recipient = ' ';
+  else
+      *recipient = alw_active_scanner->buffer[0];
+}
+
+
+void
+alw_read_logical (alw_loc loc, int *recipient)
+{
+  if (!Scanner_scan_for(alw_active_scanner, loc, Logical)) {
+    *recipient = 0;
+    return;
+  };
+  *recipient = (alw_active_scanner->buffer[0] == 'T' || alw_active_scanner->buffer[0] == 't');
+}
+
+
+static
+void
+test_real (alw_loc loc)
+{
+  if (fetestexcept(FE_UNDERFLOW)) {
+    feclearexcept(FE_UNDERFLOW);
+    Scanner_error(alw_active_scanner, loc, "Real number underflow");
+  }
+  else if (fetestexcept(FE_OVERFLOW)) {
+    feclearexcept(FE_OVERFLOW);
+    Scanner_error(alw_active_scanner, loc, "Real number overflow");
+  }
+}
+
+
+void alw_read_real (alw_loc loc, double *recipient) 
+{
+  double r;
+  Scanner_result result;
+
+  result = Scanner_scan(alw_active_scanner);
+  switch (result) {
+  case Real:
+  case Integer:
+    r = strtod (alw_active_scanner->buffer, NULL);
+    test_real(loc);
+    *recipient = r;
+    break;
+  default:
+    Scanner_exception(alw_active_scanner, loc, Real, result);
+    *recipient = 0.0;
+  }
+}
+
+
+void alw_read_complex (alw_loc loc, _Complex double *recipient) 
+{
+  Scanner_result result;
+  char *tailptr;
+  double r, i;
+
+  result = Scanner_scan(alw_active_scanner);
+  Scanner_close_buffer(alw_active_scanner);
+  switch (result) {
+  case Real:
+  case Integer:
+    r = strtod (alw_active_scanner->buffer, NULL);
+    test_real(loc);
+    *recipient = r;
+    break;
+  case Imaginary:
+    r = strtod (alw_active_scanner->buffer, NULL);
+    test_real(loc);
+    *recipient = r * I;
+    break;
+  case Complex:
+    r = strtod (alw_active_scanner->buffer, &tailptr);
+    test_real(loc);
+    i = strtod (tailptr, NULL);
+    test_real(loc);
+    *recipient = r + i * I;
+    break;
+  default:
+    Scanner_exception(alw_active_scanner, loc, Real, result);
+    *recipient = 0.0;
+  }
+}
+
+
+/* WRITE  -------------------------------------------------------------------------------- */
+
+
+static int  page_estimate;     /* The number pages that may be printed. */
+                               /* A page estimate of 0 means you don't expect to see any output. */
+
+static int  page_width;        /* The width of a page, in columns */
+static int  page_height;       /* The height of a page, in lines */
+
+static bool hard_page_breaks;  /* Should there be a page break every 60 lines?        */
+                               /* (In this library virtual page breaks happen anyway, */
+                               /* so this flag means "insert linefeed characters".)   */
+
+static bool pretty_page_breaks;  /* don't use ^L, draw a page break of ~~~~~'s   */
+
+static bool strict_line_breaks; /* Do not allow very long WRITE fields to overflow the line. */
+
+static bool trim_lines;         /* Do not print spaces at the ends of lines. */
+
+static bool eject_last_page;    /* Perform a page break at the end of the program. */
+
+
+/* The Editing Variables. */
+
+int  i_w;
+int  s_w;
+int  r_w;
+int  r_d;
+alw_chr r_format;
+
+
+void 
+alw_Editing_save (alw_Editing_t* state) 
+{
+  state->i_w = i_w;
+  state->s_w = s_w;
+  state->r_w = r_w;
+  state->r_d = r_d;
+  state->r_format = r_format;
+}
+
+
+void 
+alw_Editing_restore (alw_Editing_t* state)
+{
+  i_w = state->i_w;
+  s_w = state->s_w;
+  r_w = state->r_w;
+  r_d = state->r_d;
+  r_format = state->r_format;
+}
+
+
+#define LIMIT_WIDTH(w) ((w) > 132 ? 132 : (w))   /* Limit a width editing variable to 132 or lower. */
+
+
+alw_Printer alw_stdout_printer;   /* Printer writing to the standard output */
+alw_Printer *alw_active_printer; /* The printer in use. */
+
+
+void 
+alw_Printer_initialize (alw_Printer *printer, FILE *file, const char *name)
+{
+  printer->output = file;
+  printer->output_name = stralloc(name);
+  printer->line = 1;
+  printer->column = 1;
+  printer->true_column = 1;
+  printer->page = 1;
+}
+
+
+/* Line and page breaking. 
+   WRITE statements print to an imaginary printer full of fan-fold paper. */
+
+static void Printer_start_field (alw_Printer *printer, alw_loc loc, int true_field_width);
+static void Printer_end_field (alw_Printer *printer, alw_loc loc, int true_field_width, int field_width);
+static void Printer_line_break (alw_Printer *printer, alw_loc loc);
+static void Printer_page_break (alw_Printer *printer, alw_loc loc);
+
+
+static
+void
+Printer_break_field (alw_Printer *printer, alw_loc loc, int field_width)
+{
+  int i;
+
+  //printf("[%d - %d:%d]", field_width, printer->column, printer->true_column); /**/
+
+  if (page_estimate == 0) 
+    alw_error( loc, "The page estimate is 0 pages, nothing should be written.");
+
+  if (strict_line_breaks && field_width > page_width)
+    alw_error( loc, "A WRITE field was too wide for the page here.\n"
+                 "The page width is %d but the field width was %d.",
+                 page_width, field_width );
+
+  if (printer->column + field_width - 1 > page_width) /* won't fit on line */
+    Printer_line_break(alw_active_printer, loc); 
+}
+
+
+static
+void
+Printer_tab_field (alw_Printer *printer, alw_loc loc)
+{
+  int i;
+
+  for (i = printer->true_column; i < printer->column; ++i)
+    fputc(' ', printer->output);
+  printer->true_column = printer->column;
+}
+
+
+static
+void
+Printer_start_field (alw_Printer *printer, alw_loc loc, int field_width)
+{
+  Printer_break_field (printer, loc, field_width);
+  Printer_tab_field (printer, loc);
+}
+
+
+static
+void
+Printer_end_field (alw_Printer *printer, alw_loc loc, int field_width, int full_field_width)
+{
+  assert(field_width <= full_field_width);
+  field_width = abs(field_width);
+  printer->column += full_field_width;
+  printer->true_column += field_width;
+  //printf("{%d:%d - %d:%d}", field_width, full_field_width, printer->column, printer->true_column); /**/
+  if (printer->column > page_width + 1)  /* no more room on line */   /* XXX should this happen here? */
+    { //printf("[*]");
+    Printer_line_break(alw_active_printer, loc); }
+}
+
+/* Start a new line by printing a line or page break. */
+static
+void
+Printer_really_line_break (alw_Printer *printer, alw_loc loc)
+{
+  assert(printer->column >= 1);
+
+  if (printer->line == page_height) 
+    Printer_page_break(printer, loc);
+  else {
+    /* start a new line */
+    fputc('\n', printer->output);
+    printer->column = 1;
+    printer->true_column = 1;
+    printer->line++;
+  }
+}
+
+/* Ensure that printhead is at the start of a line.  Does nothing if the printhead 
+   is in the right place. (This is how Algol W line breaking works.) */
+static
+void
+Printer_line_break (alw_Printer *printer, alw_loc loc)
+{
+  assert(printer->column >= 1);
+  assert(printer->true_column >= 1);
+
+  if (printer->column == 1) 
+    return;
+  else
+    Printer_really_line_break(printer, loc);
+}
+
+
+static
+void
+Printer_page_break (alw_Printer *printer, alw_loc loc)
+{
+  /* If the page height is 60 lines and hard_page_breaks is on, then a
+     form feed replaces the line feed at the end of every 60th line. */
+  assert(printer->line >= 1 && printer->line <= page_height);
+  while (printer->line < page_height) {
+    fputc('\n', printer->output);
+    ++printer->line;
+  }
+  if (hard_page_breaks || pretty_page_breaks)
+    if (pretty_page_breaks)
+      { 
+        int i;
+        fputc('\n', printer->output);
+        for (i = 0; i < page_width; ++i)
+          fputc('~', printer->output);
+        fputc('\n', printer->output);
+      }
+    else
+      fputc('\f', printer->output);
+  else 
+    fputc('\n', printer->output);
+  printer->line = 1;
+  printer->column = 1;
+  printer->true_column = 1;
+  ++printer->page;
+  if (printer->page > page_estimate) 
+    alw_error( loc, "The page estimate, %d pages, has been reached.", page_estimate);
+}
+
+
+void 
+alw_write_integer(alw_loc loc, int i)
+{
+  int w = LIMIT_WIDTH(i_w);
+
+  Printer_start_field(alw_active_printer, loc, abs(w));
+  fprintf(alw_active_printer->output, "%*d", w, i);
+  Printer_end_field(alw_active_printer, loc, abs(w), abs(w) + LIMIT_WIDTH(s_w));
+
+}
+
+
+void 
+alw_write_logical(alw_loc loc, int b)
+{
+  Printer_start_field(alw_active_printer, loc, 6);
+  fprintf(alw_active_printer->output, "%6s", (b ? "TRUE" : "FALSE"));
+  Printer_end_field(alw_active_printer, loc, 6, 6 + LIMIT_WIDTH(s_w));
+}
+
+
+void 
+alw_write_bits(alw_loc loc, unsigned int x)
+{
+  Printer_start_field(alw_active_printer, loc, 14);
+  fprintf(alw_active_printer->output, "%14X", x);
+  Printer_end_field(alw_active_printer, loc, 14, 14 + LIMIT_WIDTH(s_w));
+}
+
+
+void 
+alw_write_string (alw_loc loc, alw_str s, int length)
+{
+  int i, n;
+
+  Printer_break_field(alw_active_printer, loc, length);
+  n = trim_lines ? printable_length(s, length) : length;
+  if (n > 0) {
+    Printer_tab_field(alw_active_printer, loc);
+    for (i = 0; i < n; ++i)
+      fputc(s[i], alw_active_printer->output);
+  }
+  Printer_end_field(alw_active_printer, loc, n, length);
+}
+
+
+void 
+alw_write_char (alw_loc loc, alw_chr c)
+{
+  Printer_break_field(alw_active_printer, loc, 1);
+  if (c == ' ' && trim_lines)
+    Printer_end_field(alw_active_printer, loc, 0, 1);
+  else {
+    Printer_tab_field(alw_active_printer, loc);
+    fputc(c, alw_active_printer->output);
+    Printer_end_field(alw_active_printer, loc, 1, 1);
+  }
+}
+
+
+/* Write a REAL number using the format specified in 'r_format'.
+
+   XXX This prints "e" instead of "'". 
+
+   XXX The treatment of 0.0 in the "S" format is to be consistent with
+   page 42 of the June 1972 Reference Manual, but maybe "e+00" should
+   never appear either, and there are other differences?
+*/
+
+static char real_buffer[256];  
+
+/* Replace the "e" in C exponent notation with Algol W's "'" */
+static
+void replace_e (void) {
+  char *p;
+  for (p = real_buffer; *p != '\0'; ++p)
+    if (*p == 'e') {
+      *p = '\'';
+      break;
+    }
+}
+
+/* Returns the length of the string actually printed. 
+   It will be longer than specified when necessary. */
+static
+int 
+alw_write_real_any(alw_loc loc, double r)
+{
+  int w = LIMIT_WIDTH(r_w);
+  int d = LIMIT_WIDTH(r_d);
+
+  switch (r_format) {
+  case 'A': case 'a':
+    sprintf(real_buffer, "%*.*f", w, d, r);
+    break;
+  case 'S': case 's':
+    if (r == 0.0) 
+      sprintf(real_buffer, "%*s", w, "0    ");
+    else
+      sprintf(real_buffer, "%*.*e", w, (w - 8), r); 
+    break;
+  case 'F': case 'f':
+    sprintf(real_buffer, "%*.*g", w, (w - 7), r);
+    break;
+  default:
+    alw_error(loc, "R_FORMAT = \"%c\", this is not a valid format code.", r_format);
+  }
+  replace_e();
+  fprintf(alw_active_printer->output, "%*s", w, real_buffer);
+  return strlen(real_buffer);
+}
+
+
+void 
+alw_write_real(alw_loc loc, double r)
+{
+  int w = LIMIT_WIDTH(r_w);
+
+  Printer_start_field(alw_active_printer, loc, abs(w));
+  w = alw_write_real_any(loc,r);
+  Printer_end_field(alw_active_printer, loc, abs(w), abs(w) + LIMIT_WIDTH(s_w));
+}
+
+
+void 
+alw_write_long_real(alw_loc loc, double r)
+{
+  alw_write_real(loc, r);
+}
+
+
+void 
+alw_write_complex(alw_loc loc, _Complex double x)
+{
+  int w = LIMIT_WIDTH(r_w);
+  int w2;
+
+  Printer_start_field(alw_active_printer, loc, w * 2);
+  w2 = alw_write_real_any(loc, creal(x));
+  fputc(' ', alw_active_printer->output);
+  w2 += alw_write_real_any(loc, cimag(x));
+  fputc('I', alw_active_printer->output);
+  Printer_end_field(alw_active_printer, loc, abs(w2), abs(w2) + LIMIT_WIDTH(s_w));
+}
+
+
+void 
+alw_write_long_complex(alw_loc loc, _Complex double x)
+{
+  alw_write_complex(loc, x);
+}
+
+
+void
+alw_write_reference(alw_loc loc, void *ref)
+{
+    static char buffer [128];
+    int w = LIMIT_WIDTH(i_w);
+    
+    Printer_start_field(alw_active_printer, loc, w);
+    if (ref == NULL)
+        fprintf(alw_active_printer->output, "%*s", w, "null");
+    else {
+        sprintf(buffer, "%s.%i", alw_class(ref), alw_record_number(ref));
+        assert(strlen(buffer) < 127);
+        fprintf(alw_active_printer->output, "%*s", w, buffer);
+    }
+    Printer_end_field(alw_active_printer, loc, w, w + LIMIT_WIDTH(s_w));
+}
+
+
+/* IOCONTROL  -------------------------------------------------------------------------------- */
+
+
+void 
+alw_iocontrol (alw_loc loc, int code)
+{
+  int parameter;
+
+  parameter = code % 10000;
+
+  switch(code / 10000) {
+
+  /* standard control codes */
+  case 0:
+    switch (code) {
+    case 1: Scanner_new_card(alw_active_scanner, loc); break;
+    case 2: Printer_line_break(alw_active_printer, loc); break;
+    case 3: Printer_page_break(alw_active_printer, loc); break;
+    case 4: hard_page_breaks = false; break;
+    case 5: hard_page_breaks = true; break;
+    default:
+      alw_error( loc, "IOCONTROL code %d is undefined.", code);
+      break;
+    }
+    break;
+
+  /* extended control codes */
+  case 1: page_width    = (parameter == 9999) ? 2147483647 : parameter; break;
+  case 2: page_height   = (parameter == 9999) ?          1 : parameter; break;
+  case 3: page_estimate = (parameter == 9999) ? 2147483647 : parameter; break;
+  case 4:
+    switch (parameter) {
+    case 1: alw_active_printer->page = 1; alw_active_printer->line = 1; break;
+    case 2: Printer_really_line_break(alw_active_printer, loc); break;
+    case 4: pretty_page_breaks = false; break;
+    case 5: pretty_page_breaks = true; break;
+    case 6: strict_line_breaks = false; break;
+    case 7: strict_line_breaks = true; break;
+    case 8: trim_lines = false; break;
+    case 9: trim_lines = true; break;
+    case 10: eject_last_page = false; break;
+    case 11: eject_last_page = true; break;
+    default:
+      alw_error( loc, "IOCONTROL code %d is undefined.", code);
+      break;
+    }
+    break;
+
+  default:
+    alw_error( loc, "IOCONTROL code %d is undefined.", code);
+    break;
+  }
+}
+
+
+/* init & exit  ---------------------------------------------------------------------------- */
+
+
+void
+alw_init_alwio (alw_loc loc)
+{
+  alw_Scanner_initialize(&alw_stdin_scanner, stdin, "the standard input");
+  alw_active_scanner = &alw_stdin_scanner;
+
+  alw_Printer_initialize(&alw_stdout_printer, stdout, "the standard output");
+  alw_active_printer = &alw_stdout_printer;
+
+  page_estimate      = alw_env_int  (loc, "ALW_PAGE_ESTIMATE",      INT_MAX, 0, INT_MAX);
+  page_width         = alw_env_int  (loc, "ALW_PAGE_WIDTH",         132,      1, INT_MAX);
+  page_height        = alw_env_int  (loc, "ALW_PAGE_HEIGHT",        60,       1, INT_MAX);
+  hard_page_breaks   = alw_env_bool (loc, "ALW_HARD_PAGE_BREAKS",   false);
+  pretty_page_breaks = alw_env_bool (loc, "ALW_PRETTY_PAGE_BREAKS", false);
+  strict_line_breaks = alw_env_bool (loc, "ALW_STRICT_LINE_BREAKS", false);
+  trim_lines         = alw_env_bool (loc, "ALW_TRIM_LINES",         true);
+  eject_last_page    = alw_env_bool (loc, "ALW_EJECT_LAST_PAGE",    false);
+
+  i_w = 14;
+  s_w = 2;
+  r_w = 14;
+  r_d = 0;
+  r_format = 'F'; 
+}
+
+
+void
+alw_exit_alwio (alw_loc loc)
+{
+  /* This will flush out the last line of output, if any. */
+    if (eject_last_page)
+        Printer_page_break(alw_active_printer, loc);  
+    else
+        Printer_line_break(alw_active_printer, loc);  
+}
+
+
+/* end */

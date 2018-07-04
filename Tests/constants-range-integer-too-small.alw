@@ -1,0 +1,6 @@
+begin
+  write(-2147483649);
+end.
+----compiler
+Tests/constants-range-integer-too-small.alw:2:9: integer -2147483649 will not fit in a 32 bit word
+----end

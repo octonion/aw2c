@@ -1,0 +1,53 @@
+@import url(html4css1.css);
+
+h1 { 
+  padding: 0.2em;
+  background:#6BE6FF;
+}
+
+h2 { 
+  padding: 0.2em;
+  background:#73C5FC;
+}
+
+h3 { 
+  padding: 0.2em;
+  background:#6BE6FF;
+}
+
+table
+{ 
+border: 1px #6699CC solid;
+border-collapse: collapse;
+border-spacing: 0px;
+margin-top: 0px;
+}
+
+
+table th td
+{ 
+border-bottom: 2px solid #6699CC;
+font-weight: bold;
+background-color: #eeeeee;
+}
+
+
+table td
+{ 
+border-bottom: 1px dotted #6699CC;
+font-weight: normal;
+padding-left: 3px;
+} 
+
+table tt.docutils 
+{
+  background-color: #ffffff
+}
+
+pre.literal-block 
+{
+  padding: 0.5em;
+  margin-left: 2em ;
+  margin-right: 2em ;
+  background-color: #eeeeee }
+}

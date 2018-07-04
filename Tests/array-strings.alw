@@ -1,0 +1,13 @@
+begin
+   string(5) array a (1::6, 1::6);
+
+   for i := 1 until 6 do
+      for j := 1 until 6 do
+          assert a(i,j) = " ";
+
+   a(3,4) := "abcbe";
+   a(3,5) := "ABCBE";
+
+   assert a(3,4) = "abcbe";
+   assert a(3,5) = "ABCBE";
+end.

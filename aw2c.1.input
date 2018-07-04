@@ -1,0 +1,69 @@
+.TH aw2c 1 "{{DATE}}" "aw2c" "Algol W compiler"
+.SH "NAME"
+aw2c \- compiler for the Algol W language
+.SH "SYNOPSIS"
+\fBalgolw\fR \fIsource.alw\fR \fIprogram\fR
+.PP
+\fBaw2c\fR [\fIsource.alw\fR] [\fB\-trace\fR] [\fB\-o\fR \fIobject.c\fR]
+.SH "DESCRIPTION"
+\fBaw2c\fR implements the language described in \fIAlgol W
+Language Description, June 1972\fR very closely. \fBaw2c\fR
+allows Algol W programs to contain inline C code and to be linked
+with \fBgcc\fR object code.  Read the details in the \fBaw2c\fR manual:
+\fIaw2c.html\fR.
+.SH "COMMANDS"
+\fBalgolw\fR is the script for compiling single-source Algol W programs. 
+.PP
+\fBaw2c\fR compiles Algol W programs into Gnu C (with its extensions). 
+.PP
+If \fIsource.alw\fR is left out the Algol W source is read from the standard input.
+If \fB\-o\fR \fIobject.c\fR is left out the C source is written to the standard output.
+.PP
+\fB\-trace\fR asks \fBaw2c\fR to insert procedure call tracing code (see \fIaw2c.html\fR.)
+.PP
+\fBaw2c\fR C code must be compiled with gcc and linked to the \fImath\fR, \fIBoehm GC\fR
+and \fIaw2c run-time\fR libraries: \fB\-lm\fR \fB\-lgc\fR and \fB\-lalw\fR. [The \fB\-lalw\fR flag has
+to appear after the object code files. I don't know why.]
+.PP
+    aw2c main\-program.alw \-o main.c
+    aw2c separate\-procedure.alw \-o procedure.c
+    gcc main.c procedure.c other\-stuff.o \-lm \-lgc \-lalw \-o program
+.SH "AW2C and GCC"
+\fBaw2c\fR uses Gnu C (with its extensions) as an intermediate
+language.  \fBaw2c\fR is responsible for all parsing, type checking and
+compile-time error messages, but it passes on the difficult task of
+generating object code to \fBgcc\fR. \fBgcc\fR should stay completely invisible
+when you run \fBalgolw\fR, any messages from \fBgcc\fR whatsoever should be
+considered to be bugs in \fBaw2c\fR.  
+.PP
+Programs compiled by \fBaw2c\fR should be able to produce Algol W specific
+error messages for all possible runtime errors.  A program created by
+\fBaw2c\fR should never output C assertion errors or a core-dump.
+(However, if you include inline C code you are back on your own.)
+.SH "PREREQUISITES"
+The gcc C compiler,
+the Boehm GC library (\fIlibgc1c2\fR in Debian).
+.SH "VERSION"
+{{VERSION}}
+.SH "COPYRIGHTS"
+Copyright 2008 by Glyn Webster.
+.PP
+aw2c is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License and Lesser GNU General 
+Public License as published by the Free Software Foundation, either 
+version 3 of the License, or (at your option) any later version.
+.SH "FILES"
+.PP
+ \fI{{BINDIR}}/aw2c\fR
+ \fI{{BINDIR}}/algolw\fR
+ \fI{{LIBDIR}}/libalw.a\fR
+ \fI{{INCDIR}}/alw.h\fR
+.SH "SEE ALSO"
+.PP
+ \fIgcc\fR\|(1)
+ \fI{{DOCDIR}}/aw2c.html\fR
+ \fI{{DOCDIR}}/algolw.pdf\fR
+ \fI{{DOCDIR}}/algolw.dvi\fR
+ \fI/usr/share/doc/libgc\-dev\fR or <http://www.hpl.hp.com/personal/Hans_Boehm/gc/>
+.SH "AUTHOR"
+Glyn Webster glyn@wave.co.nz

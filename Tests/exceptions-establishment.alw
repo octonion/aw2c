@@ -1,0 +1,16 @@
+comment Can an Exceptional Condition record be set and read?;
+begin
+   assert UNFL = null;
+
+   UNFL := EXCEPTION(false, 10, 1, true, "UNDERFLOW FIXED UP");
+
+   assert UNFL is EXCEPTION;
+   assert ~XCPNOTED(UNFL);
+   assert XCPLIMIT(UNFL) = 10;
+   assert XCPACTION(UNFL) = 1; 
+   assert XCPMARK(UNFL);
+   assert XCPMSG(UNFL) = "UNDERFLOW FIXED UP"
+end.
+
+
+

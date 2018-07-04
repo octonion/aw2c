@@ -1,0 +1,66 @@
+*{
+#include <stdio.h>
+#include <malloc.h>
+};
+begin
+   PROCEDURE READLINE(STRING(255) VALUE RESULT S;
+                      INTEGER RESULT LEN;
+                      INTEGER VALUE RESULT NO;
+                      LOGICAL RESULT ENDOFFILE);
+      COMMENT 'S' GETS THE NEXT LINE, 'LEN' GETS ITS LENGTH
+            (NUMBER OF CHARACTERS, NOT THE INDEX OF THE LAST
+            CHARACTER), AND 'NO', WHICH WAS THE LINE NUMBER
+            OF THE PREVIOUS LINE, BECOMES THE LINE NUMBER
+            THE NEXT LINE. IF THERE ARE NO MORE INPUT LINES,
+            'ENDOFFILE' BECOMES 'TRUE';
+      {
+        char *line = (char *)malloc(257);  /* allow for "\n\0" at end of line */
+        int size = 257;
+        int length = getline(&line, &size, stdin);
+        if (length == -1) {
+           *len = 0;
+           *endoffile = 1;
+        }
+        else {
+           if (line[length - 1] == '\n')
+             --length;
+           alw_str_cpy(s, 255, line, length);
+           *len = length;
+           (*no)++;
+           *endoffile = 0;
+        }
+        free(line);
+      };
+
+   string(255) line;
+   integer length, line_number;
+   logical eof;
+
+   i_w := 2;
+
+   line_number := 0;
+   while 
+      begin 
+         readline(line, length, line_number, eof); 
+         ~eof 
+      end 
+   do
+      write(line_number, length, line(0|60));
+   write("(eof)")
+end.
+----stdin
+COMMENT 'S' GETS THE NEXT LINE, 'LEN' GETS ITS LENGTH
+(NUMBER OF CHARACTERS, NOT THE INDEX OF THE LAST
+CHARACTER), AND 'NO', WHICH WAS THE LINE NUMBER
+OF THE PREVIOUS LINE, BECOMES THE LINE NUMBER
+THE NEXT LINE. IF THERE ARE NO MORE INPUT LINES,
+'ENDOFFILE' BECOMES 'TRUE';
+----stdout
+ 1  53  COMMENT 'S' GETS THE NEXT LINE, 'LEN' GETS ITS LENGTH
+ 2  48  (NUMBER OF CHARACTERS, NOT THE INDEX OF THE LAST
+ 3  47  CHARACTER), AND 'NO', WHICH WAS THE LINE NUMBER
+ 4  45  OF THE PREVIOUS LINE, BECOMES THE LINE NUMBER
+ 5  48  THE NEXT LINE. IF THERE ARE NO MORE INPUT LINES,
+ 6  27  'ENDOFFILE' BECOMES 'TRUE';
+(eof)
+----end

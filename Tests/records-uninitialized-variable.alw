@@ -1,0 +1,10 @@
+begin
+    record rec(integer f);
+    reference(rec) r;
+    write(f(r))
+end.
+----stderr
+Tests/records-uninitialized-variable.alw:4:11: reference error: tried to find field f of a NULL reference
+----exitcode
+1
+----end

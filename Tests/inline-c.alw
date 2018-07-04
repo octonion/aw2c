@@ -1,0 +1,17 @@
+*{
+#include <stdio.h>
+#define USE_TWO
+};
+begin
+   integer i, j;
+   i := 1;
+   {#ifdef USE_TWO};
+   j := 2;
+   {#else};
+   j := 3;
+   {#endif};
+   {printf("%03d,%03d\n", i, j);}
+end.
+----stdout
+001,002
+----end

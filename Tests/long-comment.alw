@@ -1,0 +1,12 @@
+begin
+   write("1");
+@aw2c_text
+   write("2");  woot! we do what we like in here!
+   write("3");
+@aw2c_code
+   write("4");
+end.
+----stdout
+1
+4
+----end

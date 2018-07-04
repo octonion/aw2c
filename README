@@ -1,0 +1,46 @@
+AW2C: an Algol W compiler
+
+Read INSTALL for building and installation instructions.
+
+About
+-----
+
+aw2c is a new compiler for the Algol W language. It is intended to to
+be a correct and complete implementation of the language described in
+the Algol W Language Description, June 1972.
+
+aw2c uses Gnu C (with its extensions) as an intermediate language.  It
+allows Algol W programs to contain inline C code and be linked to C
+object code.
+
+aw2c should be able to compile code intended for the ALGOLW and
+XALGOLW compilers with little or no modification. There may be some
+incompatibilities, aw2c appears to have stricter type-checking than
+ALGOLW and some cunning Algol W coding work-arounds will no longer
+work.
+
+aw2c's interface to C and implementation details are described in
+aw2c.rst or aw2c.html. 
+
+Copyright
+---------
+
+The aw2c test suite contains 'parser.alw', a parser generator by
+Hendrik Boom, it remains copyright to its author.  Otherwise,
+Copyright 2008 by Glyn Webster.
+
+|aw2c| is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public and Lesser GNU General
+Public licenses as published by the Free Software Foundation, either
+version 3 of the License, or (at your option) any later version.
+
+aw2c is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public
+License along with aw2c.  If not, see <http://www.gnu.org/licenses/>.
+
+The aw2c-fish logo is not covered by GNU General Public Licences,
+it is simply copyright to Glyn Webster, 2008.

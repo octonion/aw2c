@@ -1,0 +1,49 @@
+comment Record designators take no parameters or as many parameters as fields;
+comment Uninitialized record fields are assigned zero-like default values by default (not required);
+begin
+   record rec (
+      integer i;
+      real x;
+      complex c;
+      logical l;
+      bits b;
+      reference(rec) r;
+      string(3) s
+   );
+
+   reference(rec) ref;
+
+   ref := rec;
+
+   assert(i(ref) = 0);
+   assert(x(ref) = 0.0);
+   assert(c(ref) = 0.0);
+   assert(~ l(ref));
+   assert(b(ref) = #0);
+   assert(r(ref) = null);
+   assert(s(ref) = "   ");
+
+   i(ref) := 1;    comment Just to be sure that we really do get a new record next;
+   x(ref) := 2.0;
+   c(ref) := 3.0;
+
+   ref := rec(,,,,,,);
+
+   assert(i(ref) = 0);
+   assert(x(ref) = 0.0);
+   assert(c(ref) = 0.0);
+   assert(~ l(ref));
+   assert(b(ref) = #0);
+   assert(r(ref) = null);
+   assert(s(ref) = "   ");
+
+   ref := rec(1, , 2+3i, true, , , "Yay");
+
+   assert(i(ref) = 1);
+   assert(x(ref) = 0.0);
+   assert(c(ref) = 2+3i);
+   assert(l(ref));
+   assert(b(ref) = #0);
+   assert(r(ref) = null);
+   assert(s(ref) = "Yay");
+end.

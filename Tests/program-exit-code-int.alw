@@ -1,0 +1,9 @@
+begin 
+   write(2 + 2); 
+   3
+end.
+----stdout
+             4
+----exitcode
+3
+----end

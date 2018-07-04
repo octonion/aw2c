@@ -1,0 +1,18 @@
+begin
+   procedure p1 (integer value result i); 
+     algol "";
+
+   integer procedure p2 (real value r);
+     fortran "P2";
+
+   procedure p3 (real value r, s); 
+     macro "#define p3(r,s) ((r) + (s))";
+
+   procedure p4 (integer value r, s); 
+     auto "";
+
+   *{ void p4 (int r, int s) {} };
+
+   comment We just want to look at the C code of the above;
+   assert(true)
+end.

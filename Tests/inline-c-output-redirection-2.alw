@@ -1,0 +1,84 @@
+*{
+#include <stdio.h>
+#include "alwio.h"
+#define FILE_NAME "Tests/inline-c-output-redirection.temp"
+};
+
+begin
+    *{ 
+    FILE *file;
+    alw_Scanner file_scanner;
+    alw_Printer file_printer;
+    };
+
+    procedure openin;
+    {
+        file = fopen(FILE_NAME, "r");
+        alw_Scanner_initialize(&file_scanner, file, FILE_NAME);
+    };
+
+    procedure openout;
+    {
+        file = fopen(FILE_NAME, "w");
+        alw_Printer_initialize(&file_printer, file, FILE_NAME);
+    };
+
+    procedure closefile;
+    {
+        fclose(file);
+    };
+
+    procedure get (integer value channel);
+    {
+        if (channel == 2)
+            alw_active_scanner = &file_scanner;
+        else
+            alw_active_scanner = &alw_stdin_scanner;
+    };
+
+    procedure put (integer value channel);
+    {
+        if (channel == 2)
+            alw_active_printer = &file_printer;
+        else
+            alw_active_printer = &alw_stdout_printer;
+    };
+
+    integer i;
+    string(20) s;
+
+    openout;
+    write("line 1");
+    write("line 2");
+    put(2);
+    write("line 3");
+    write("line 4");
+    write("line 5");
+    put(1);
+    write("line 6");
+    write("line 7");
+    closefile;
+
+    openin;
+    get(2);
+    for i := 1 until 3 do
+        begin
+            string(6) s;
+            readcard(s);
+            write(s);
+        end;
+    closefile;
+    get(0);
+    write("done.")
+end.
+
+----stdout
+line 1
+line 2
+line 6
+line 7
+line 3
+line 4
+line 5
+done.
+----end

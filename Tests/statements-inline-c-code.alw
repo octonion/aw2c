@@ -1,0 +1,7 @@
+begin
+   integer i, j, k;
+   i := 1;
+   j := 2;
+   { k = i + j; /* How did that go? */ };
+   assert k = 3;
+end.

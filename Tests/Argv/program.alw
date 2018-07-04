@@ -1,0 +1,13 @@
+% Test argc/argv access. %
+*{#include <string.h>};
+begin
+   string(80) argv;  %identifier will be modified to "argv_"%
+
+   for i := 0 until (integer){argc} - 1 do
+     begin
+        integer len;
+        len := (integer){strlen(argv[i])};
+        {alw_str_cpy(argv_, 80, argv[i], len);};
+        write(i_w := 2, i, len, argv)
+     end
+end.
